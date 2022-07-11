@@ -4,14 +4,24 @@
 </head>
 
 <body>
-    <div class="container mt-4">
+    <div class="container mt-4" style="max-width: 90%">
         <h2>Pic 2 Ascii</h2>
         <div class="row mb-3">
-            <label class="col-sm-4 col-form-label" for="asciiRamp">Ascii Ramp</label>
+            <label class="col-sm-4 col-form-label" for="colour">Colour</label>
             <div class="col-sm-8">
-                <select class="form-select form-control" id="asciiRamp">
+                <select class="form-select form-control" id="colour">
+                    <option value="black-and-white" selected>Black and White</option>
+                    <option value="colour">Colour [Experimental]</option>
+                </select>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label class="col-sm-4 col-form-label" for="asciiRange">Ascii Range</label>
+            <div class="col-sm-8">
+                <select class="form-select form-control" id="asciiRange">
                     <option value="@%#*+=-:. " selected>Simple (@%#*+=-:. )</option>
-                    <option value='$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`. '>Standard ($@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,\"^`'.)</option>
+                    <option value='$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~i!lI;:,"^`. '>Standard ($@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~i!lI;:,\"^`'.)</option>
+                    <option value="@%#">Full (@%#) [Best with colours]</option>
                 </select>
             </div>
         </div>
@@ -32,7 +42,7 @@
         </div>
         <div class="row mb-3">
             <div class="col-12 text-center">
-                <p class="invisible img-thumbnail" id="asciiArt" style="font-family: Consolas; white-space: pre; line-height: initial; overflow: auto; max-height: 75vh;"></p>
+                <p class="invisible img-thumbnail" id="asciiArt" style="font-family: 'Courier New', Courier, monospace; white-space: pre; line-height: initial; overflow: auto; max-height: 75vh;"></p>
             </div>
         </div>
         <div class="row mb-3">
@@ -46,19 +56,16 @@
 <script>
     function copyAsciiArt() {
         const p = document.getElementById("asciiArt");
-        const asciiArt = p.innerText;
+        const asciiArt = p.innerHTML;
         navigator.clipboard.writeText(asciiArt);
     }
 
     function onImageInputChange($event) {
-        const asciiRamp = document.getElementById("asciiRamp").value;
-        console.log(asciiRamp);
-
+        const asciiRange = document.getElementById("asciiRange").value;
         const file = $event.target.files[0];
         const reader = new FileReader();
         reader.addEventListener("load", ($event) => {
             const image = new Image();
-            // console.log(image, image.width, image.height);
             image.addEventListener('load', () => {
                 const [width, height] = downSampling(image.width, image.height);
 
@@ -69,24 +76,38 @@
                 const context = canvas.getContext("2d");
                 context.drawImage(image, 0, 0, width, height);
 
+                const colour = document.getElementById("colour").value === 'colour';
+
                 const imageData = context.getImageData(0, 0, width, height);
                 const rgbaArr = imageData.data;
                 let asciiString = "";
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         const i = (y * 4) * width + (x * 4);
-                        const grayscale = 0.299*rgbaArr[i] + 0.587*rgbaArr[i+1] + 0.114*rgbaArr[i+2];
+
+                        const red = rgbaArr[i];
+                        const green = rgbaArr[i+1];
+                        const blue = rgbaArr[i+2];
+                        const alpha = rgbaArr[i+3];
+
+                        // Weighted Greyscale
+                        const grayscale = 0.299*red + 0.587*green + 0.114*blue;
                         // rgbaArr[i] = grayscale;
                         // rgbaArr[i+1] = grayscale;
                         // rgbaArr[i+2] = grayscale;
-                        asciiString += (asciiRamp[Math.ceil((asciiRamp.length - 1) * grayscale / 255)]);
+                        if (colour) {
+                            asciiString += "<span style='color: rgba(" + red + "," + green + "," + blue + "," + alpha/255 + ")'>" + (asciiRange[Math.ceil((asciiRange.length - 1) * grayscale / 255)]) + "</span>";
+                        } else {
+                            asciiString += (asciiRange[Math.ceil((asciiRange.length - 1) * grayscale / 255)]);
+                        }
                     }
                     asciiString += "\n";
                 }
                 // context.putImageData(imageData, 0, 0);
+                // document.body.appendChild(canvas);
 
                 const asciiArt = document.getElementById("asciiArt");
-                asciiArt.innerText = asciiString;
+                asciiArt.innerHTML = asciiString;
                 asciiArt.classList.remove('invisible');
 
                 const asciiArtBtn = document.getElementById("asciiArtBtn");
