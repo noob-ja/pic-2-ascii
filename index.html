@@ -16,6 +16,15 @@
             </div>
         </div>
         <div class="row mb-3">
+            <label class="col-sm-4 col-form-label" for="background">Background</label>
+            <div class="col-sm-8">
+                <select class="form-select form-control" id="background">
+                    <option value="black" selected>Black</option>
+                    <option value="white">White</option>
+                </select>
+            </div>
+        </div>
+        <div class="row mb-3">
             <label class="col-sm-4 col-form-label" for="asciiRange">Ascii Range</label>
             <div class="col-sm-8">
                 <select class="form-select form-control" id="asciiRange">
@@ -42,7 +51,7 @@
         </div>
         <div class="row mb-3">
             <div class="col-12 text-center">
-                <p class="invisible img-thumbnail" id="asciiArt" style="font-family: 'Courier New', Courier, monospace; white-space: pre; line-height: initial; overflow: auto; max-height: 75vh;"></p>
+                <p class="invisible img-thumbnail" id="asciiArt"></p>
             </div>
         </div>
         <div class="row mb-3">
@@ -53,7 +62,22 @@
     </div>
 </body>
 
+<style>
+    #asciiArt {
+        font-family: 'Courier New', Courier, monospace; 
+        font-size: 1pt;
+        white-space: pre; 
+        line-height: 1.3; 
+        overflow: auto; 
+        max-height: 75vh; 
+        background: black; 
+        color: white;
+    }
+</style>
+
 <script>
+    let imageEvent = null;
+
     function copyAsciiArt() {
         const p = document.getElementById("asciiArt");
         const asciiArt = p.innerHTML;
@@ -61,10 +85,14 @@
     }
 
     function onImageInputChange($event) {
+        if (!$event) {
+            return;
+        }
+        imageEvent = $event;
         const asciiRange = document.getElementById("asciiRange").value;
-        const file = $event.target.files[0];
+        const file = imageEvent.target.files[0];
         const reader = new FileReader();
-        reader.addEventListener("load", ($event) => {
+        reader.addEventListener("load", (imageEvent) => {
             const image = new Image();
             image.addEventListener('load', () => {
                 const [width, height] = downSampling(image.width, image.height);
@@ -77,6 +105,7 @@
                 context.drawImage(image, 0, 0, width, height);
 
                 const colour = document.getElementById("colour").value === 'colour';
+                const blackBackground = document.getElementById("background").value === 'black';
 
                 const imageData = context.getImageData(0, 0, width, height);
                 const rgbaArr = imageData.data;
@@ -96,9 +125,9 @@
                         // rgbaArr[i+1] = grayscale;
                         // rgbaArr[i+2] = grayscale;
                         if (colour) {
-                            asciiString += "<span style='color: rgba(" + red + "," + green + "," + blue + "," + alpha/255 + ")'>" + (asciiRange[Math.ceil((asciiRange.length - 1) * grayscale / 255)]) + "</span>";
+                            asciiString += "<span style='color: rgba(" + red + "," + green + "," + blue + "," + alpha/255 + ")'>" + getAsciiChar(grayscale, asciiRange, blackBackground) + "</span>";
                         } else {
-                            asciiString += (asciiRange[Math.ceil((asciiRange.length - 1) * grayscale / 255)]);
+                            asciiString += getAsciiChar(grayscale, asciiRange, blackBackground);
                         }
                     }
                     asciiString += "\n";
@@ -113,7 +142,7 @@
                 const asciiArtBtn = document.getElementById("asciiArtBtn");
                 asciiArtBtn.classList.remove('invisible');
             }, false);
-            image.src = $event.target.result;
+            image.src = imageEvent.target.result;
         });
         reader.readAsDataURL(file);
     }
@@ -143,5 +172,29 @@
         return height / width;
     }
 
+    function getAsciiChar(grayscale, asciiRange, blackBackground) {
+        let randIndex = Math.ceil((asciiRange.length - 1) * grayscale / 255);
+        if (blackBackground) {
+            randIndex = asciiRange.length - 1 - randIndex;
+        }
+        return (asciiRange[randIndex]);
+    }
+
+    document.getElementById("colour").addEventListener("change", () => { onImageInputChange(imageEvent) }, false);
+    document.getElementById("background").addEventListener("change", () => {
+        const blackBackground = document.getElementById("background").value === 'black';
+        const p = document.getElementById("asciiArt");
+        if (blackBackground) {
+            p.style.background = "black";
+            p.style.color = "white";
+        } else {
+            p.style.background = "white";
+            p.style.color = "black";
+        }
+        onImageInputChange(imageEvent);
+    }, false);
+    document.getElementById("asciiRange").addEventListener("change", () => { onImageInputChange(imageEvent) }, false);
+    document.getElementById("maxHeight").addEventListener("change", () => { onImageInputChange(imageEvent) }, false);
+    document.getElementById("maxWidth").addEventListener("change", () => { onImageInputChange(imageEvent) }, false);
     document.getElementById("imageInput").addEventListener("change", onImageInputChange, false);
 </script>
